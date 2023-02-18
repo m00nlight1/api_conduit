@@ -47,10 +47,15 @@ class AppNoteController extends ResourceController {
 
   @Operation.get()
   Future<Response> getNotes(
-      @Bind.header(HttpHeaders.authorizationHeader) String header) async {
+      @Bind.header(HttpHeaders.authorizationHeader) String header,
+      {@Bind.query('pageLimit') int pageLimit = 0,
+      @Bind.query('skipRows') int skipRows = 0}) async {
     try {
       final id = AppUtils.getIdFromHeader(header);
       final qCreateNote = Query<Note>(managedContext)
+        ..fetchLimit = pageLimit
+        ..offset = pageLimit * skipRows
+        ..where((x) => x.isDeleted).equalTo(false)
         ..where((x) => x.user!.id).equalTo(id);
 
       final List<Note> list = await qCreateNote.fetch();
@@ -175,7 +180,7 @@ class AppNoteController extends ResourceController {
       } else {
         qDeleteNote.values.isDeleted = true;
         await qDeleteNote.updateOne();
-        
+
         final qNoteHistory = Query<NoteHistory>(managedContext)
           ..values.contentOfAction =
               'На логическом уровне удалена заметка номер: ${note.id}. Название: ${note.name}, содержание: ${note.content}, категория: ${note.category}. Пользователь: $currentUserId'
